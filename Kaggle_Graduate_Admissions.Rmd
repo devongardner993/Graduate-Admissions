@@ -1,0 +1,91 @@
+---
+title: "Graduate Admissions"
+author: "DeVon Marquette Gardner"
+date: "May 27, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#Preliminaries
+### Set working Directory
+### Read in Data
+### Download Packages
+```{r}
+setwd("~/Projects/Indian_Admis")
+Adm_test <- read.csv("Admission_Predict.csv")
+Adm_train <- read.csv("Admission_Predict_Ver1.1.csv")
+dataset <- rbind(Adm_test,Adm_test)
+library(ggplot2)
+library(reshape)
+library(caret)
+```
+- The unique identifier is Serial.No.
+- All variables are quantitative except for Research. 
+- Chance.of.Admit is a percentage
+Because the sample size is greater than 30, paramectric tests can be used.
+
+# Data Exploration
+```{r}
+View(dataset)
+sapply(dataset, class)
+
+dataset$Research <- as.factor(dataset$Research)
+ggplot(dataset, aes(x = Research)) +
+  theme_bw() +
+  geom_bar() +
+  labs(y = "Research Count",
+       title = "Research Rates")
+prop.table(table(dataset$Research))
+
+# Plot of the GRE SCore and TOFL Test Score side by side
+newdata <- data.frame(dataset$GRE.Score,dataset$TOEFL.Score)
+newdata <- melt(newdata)
+ggplot(newdata, aes(x = variable, y = value, color = variable)) +
+  geom_boxplot() +
+  labs(title = "Boxplot of Test Scores", 
+       y = "Scores", x = "Test")
+
+library('caTools')
+split = sample.split(dataset$Chance.of.Admit, SplitRatio = 8/10)
+split # True if observation went to training set and false if observation went to the test set
+
+
+training_set = subset(dataset, split == TRUE)
+test_set = subset(dataset, split == FALSE)
+
+regressor <- lm(Chance.of.Admit~., training_set)
+summary(regressor)
+
+y_pred = predict(regressor, newdata = test_set )
+
+y_pred
+test_set$Chance.of.Admit
+
+avsp <- data.frame(actual = c(test_set$Chance.of.Admit),predicted = c(y_pred))
+avsp
+```
+
+
+
+
+```{r}
+sum(is.na(Adm_train)) # checking if there are any missing values
+trctrl <- trainControl(method = "cv", number = 5)
+
+linear_model <- train(Chance.of.Admit~.,
+                  data = Adm_train,
+                  method = "lm",
+                  preProcess = c("center","scale"),
+                  trControl = trctrl)
+linear_model
+
+predicted_probability = predict(linear_model,
+                                newdata = Adm_test
+                                )
+
+predicted_probability
+```
+
